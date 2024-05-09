@@ -27,18 +27,14 @@ import org.yaml.snakeyaml.LoaderOptions;
 import org.yaml.snakeyaml.Yaml;
 import org.yaml.snakeyaml.constructor.Constructor;
 import org.yaml.snakeyaml.constructor.SafeConstructor;
-import org.yaml.snakeyaml.nodes.MappingNode;
 import org.yaml.snakeyaml.nodes.Tag;
-import org.yaml.snakeyaml.parser.ParserException;
 import org.yaml.snakeyaml.representer.Representer;
 import org.yaml.snakeyaml.resolver.Resolver;
 
-import java.util.AbstractMap;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.Map;
-import java.util.Set;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.regex.Pattern;
 
@@ -49,30 +45,30 @@ import java.util.regex.Pattern;
  * @since 0.3.0
  */
 public class DefaultYamlConfigParse extends AbstractConfigParse {
-    
+
     protected static final Logger LOGGER = LoggerFactory.getLogger(DefaultYamlConfigParse.class);
-    
+
     private static final String YAML_ALLOW_COMPLEX_OBJECT = "yamlAllowComplexObject";
-    
+
     private static boolean getYamlAllowComplexObject() {
         return Boolean.getBoolean(YAML_ALLOW_COMPLEX_OBJECT);
     }
-    
+
     protected static Yaml createYaml() {
-        SafeConstructor constructor;
-        if (getYamlAllowComplexObject()) {
-            constructor = new Constructor();
-        } else {
-            constructor = new SafeConstructor();
-        }
-        Representer representer = new Representer();
-        DumperOptions dumperOptions = new DumperOptions();
-        LimitedResolver resolver = new LimitedResolver();
         LoaderOptions loaderOptions = new LoaderOptions();
         loaderOptions.setAllowDuplicateKeys(false);
+        SafeConstructor constructor;
+        if (getYamlAllowComplexObject()) {
+            constructor = new Constructor(loaderOptions);
+        } else {
+            constructor = new SafeConstructor(loaderOptions);
+        }
+        DumperOptions dumperOptions = new DumperOptions();
+        Representer representer = new Representer(dumperOptions);
+        LimitedResolver resolver = new LimitedResolver();
         return new Yaml(constructor, representer, dumperOptions, loaderOptions, resolver);
     }
-    
+
     protected static boolean process(MatchCallback callback, Yaml yaml, String content) {
         int count = 0;
         if (LOGGER.isDebugEnabled()) {
@@ -88,7 +84,7 @@ public class DefaultYamlConfigParse extends AbstractConfigParse {
         }
         return (count > 0);
     }
-    
+
     protected static boolean process(Map<String, Object> map, MatchCallback callback) {
         if (LOGGER.isDebugEnabled()) {
             LOGGER.debug("Merging document (no matchers set): " + map);
@@ -96,7 +92,7 @@ public class DefaultYamlConfigParse extends AbstractConfigParse {
         callback.process(getFlattenedMap(map));
         return true;
     }
-    
+
     @SuppressWarnings("unchecked")
     protected static Map<String, Object> asMap(Object object) {
         // YAML can have numbers as keys
@@ -106,7 +102,7 @@ public class DefaultYamlConfigParse extends AbstractConfigParse {
             result.put("document", object);
             return result;
         }
-        
+
         Map<Object, Object> map = (Map<Object, Object>) object;
         for (Map.Entry<Object, Object> entry : map.entrySet()) {
             Object key = entry.getKey();
@@ -122,9 +118,9 @@ public class DefaultYamlConfigParse extends AbstractConfigParse {
         }
         return result;
     }
-    
+
     private static class LimitedResolver extends Resolver {
-        
+
         @Override
         public void addImplicitResolver(Tag tag, Pattern regexp, String first) {
             if (tag == Tag.TIMESTAMP) {
@@ -133,13 +129,13 @@ public class DefaultYamlConfigParse extends AbstractConfigParse {
             super.addImplicitResolver(tag, regexp, first);
         }
     }
-    
+
     protected static Map<String, Object> getFlattenedMap(Map<String, Object> source) {
         Map<String, Object> result = new LinkedHashMap<String, Object>();
         buildFlattenedMap(result, source, null);
         return result;
     }
-    
+
     protected static void buildFlattenedMap(Map<String, Object> result, Map<String, Object> source, String path) {
         for (Map.Entry<String, Object> entry : source.entrySet()) {
             String key = entry.getKey();
@@ -169,7 +165,7 @@ public class DefaultYamlConfigParse extends AbstractConfigParse {
             }
         }
     }
-    
+
     @Override
     public Map<String, Object> parse(String configText) {
         final AtomicReference<Map<String, Object>> result = new AtomicReference<Map<String, Object>>();
@@ -181,14 +177,14 @@ public class DefaultYamlConfigParse extends AbstractConfigParse {
         }, createYaml(), configText);
         return result.get();
     }
-    
+
     @Override
     public String processType() {
         return ConfigType.YAML.getType();
     }
-    
+
     protected interface MatchCallback {
-        
+
         /**
          * Put Map to Properties.
          *
@@ -196,5 +192,5 @@ public class DefaultYamlConfigParse extends AbstractConfigParse {
          */
         void process(Map<String, Object> map);
     }
-    
+
 }
