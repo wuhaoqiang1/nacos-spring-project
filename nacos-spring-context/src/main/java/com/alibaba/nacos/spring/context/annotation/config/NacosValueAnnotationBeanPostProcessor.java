@@ -28,6 +28,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import org.apache.commons.lang3.StringUtils;
+import com.alibaba.nacos.spring.beans.factory.annotation.AbstractAnnotationBeanPostProcessor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.BeansException;
@@ -48,7 +50,6 @@ import org.springframework.util.ReflectionUtils;
 import com.alibaba.nacos.api.config.annotation.NacosValue;
 import com.alibaba.nacos.common.utils.MD5Utils;
 import com.alibaba.nacos.spring.context.event.config.NacosConfigReceivedEvent;
-import com.alibaba.spring.beans.factory.annotation.AbstractAnnotationBeanPostProcessor;
 
 /**
  * Injected {@link NacosValue}
@@ -181,7 +182,7 @@ public class NacosValueAnnotationBeanPostProcessor
 	}
 
 	private Object resolveNotifyValue(String nacosValueExpr, String key, String newValue) {
-		String spelExpr = nacosValueExpr.replaceAll("\\$\\{" + key + PLACEHOLDER_SUFFIX, newValue);
+		String spelExpr = StringUtils.replace(nacosValueExpr, PLACEHOLDER_PREFIX + key + PLACEHOLDER_SUFFIX, newValue);
 		return resolveStringValue(spelExpr);
 	}
 
